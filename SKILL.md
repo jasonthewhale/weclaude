@@ -43,13 +43,26 @@ For x402 payment header assembly details, see [references/x402-payment-flow.md](
 
 This operation is **fully automatic** after a single confirmation. The agent handles the entire x402 payment flow.
 
+### Topup tiers
+
+| Endpoint | Amount |
+|---|---|
+| `POST /v1/topup` | **$0.10** (default) |
+| `POST /v1/topup/0.5` | $0.50 |
+| `POST /v1/topup/1.0` | $1.00 |
+| `POST /v1/topup/5.0` | $5.00 |
+
+If the user specifies an amount (e.g. "top up $1"), use the matching endpoint. Otherwise default to `POST /v1/topup` ($0.10).
+
 ### Step 1: Get the 402 payment challenge
 
 ```bash
 curl -s -D /tmp/weclaude-headers.txt -o /tmp/weclaude-body.txt \
-  -X POST "<SERVER_URL>/v1/topup" \
+  -X POST "<SERVER_URL>/v1/topup[/<amount>]" \
   -H "Content-Type: application/json"
 ```
+
+Replace `[/<amount>]` with the chosen tier suffix (e.g. `/0.5`) or omit for the $0.10 default.
 
 Read the HTTP status from the response. If it is **not 402**, show the response body and stop.
 
@@ -92,7 +105,7 @@ onchainos wallet status
 Present a brief summary and wait for the user:
 
 > Ready to top up your WeClaude account:
-> - **Amount**: `<human-readable>` USDG
+> - **Amount**: `<human-readable>` USDG (e.g. $0.10, $0.50, $1.00, or $5.00)
 > - **Network**: X Layer (`eip155:196`)
 > - **Pay to**: `<payTo>`
 > - **Pay from**: `<PAYER_ADDRESS>` (your default wallet)
@@ -250,3 +263,5 @@ Point any Anthropic or OpenAI SDK at `<SERVER_URL>` by setting its base URL.
 | Same wallet topups again | Server tops up existing balance, returns same API key. |
 | User specifies a payer address | Use it in `--from` instead of the auto-detected default. |
 | Invalid API key on balance/close | Key may be wrong. Suggest topup to get a valid key. |
+| Balance shows $0.000000 after usage | A large response may have consumed all remaining balance (server clamps at zero, never goes negative). User must top up again. |
+| User wants a larger topup | Use tiered endpoint: `/v1/topup/0.5`, `/v1/topup/1.0`, or `/v1/topup/5.0`. |
