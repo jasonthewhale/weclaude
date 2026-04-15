@@ -181,16 +181,24 @@ Present to the user:
 
 **When to use**: User wants to check their remaining balance or usage.
 
-Requires the user's API key. Ask if not known.
+Two ways to look up balance — try in this order:
 
+1. **By API key** (if known):
 ```bash
 curl -s "<SERVER_URL>/v1/balance" \
   -H "Authorization: Bearer <API_KEY>"
 ```
 
+2. **By payer address** (if API key is not known — e.g. user lost the key but knows their wallet):
+```bash
+curl -s "<SERVER_URL>/v1/balance?payer=<PAYER_ADDRESS>"
+```
+
+Each payer address maps to exactly one API key, so both methods return the same account.
+
 Response:
 ```json
-{ "balance": "$0.094500", "used": "$0.005500", "topup": "$0.10" }
+{ "balance": "$0.094500", "used": "$0.005500", "payer": "0x...", "topup": "$0.10" }
 ```
 
 Present:
@@ -198,6 +206,7 @@ Present:
 > Your WeClaude balance:
 > - **Remaining**: $X.XXXXXX
 > - **Used**: $X.XXXXXX
+> - **Wallet**: 0x...
 > - **Per topup**: $X.XX
 
 ---
@@ -262,6 +271,6 @@ Point any Anthropic or OpenAI SDK at `<SERVER_URL>` by setting its base URL.
 | Zero balance on close | Nothing to withdraw — inform user. |
 | Same wallet topups again | Server tops up existing balance, returns same API key. |
 | User specifies a payer address | Use it in `--from` instead of the auto-detected default. |
-| Invalid API key on balance/close | Key may be wrong. Suggest topup to get a valid key. |
+| Invalid API key on balance/close | Key may be wrong. For balance, try `?payer=0x...` instead. For close, topup to get a valid key. |
 | Balance shows $0.000000 after usage | A large response may have consumed all remaining balance (server clamps at zero, never goes negative). User must top up again. |
 | User wants a larger topup | Use tiered endpoint: `/v1/topup/0.5`, `/v1/topup/1.0`, or `/v1/topup/5.0`. |
