@@ -160,7 +160,14 @@ curl -s "https://api.weclaude.cc/v1/buyer/balance?payer=<PAYER_ADDRESS>"
 
 Each payer address maps to exactly one API key, so both methods return the same account.
 
-Response:
+**By-wallet lookup also returns the `api_key`** — use this to recover a lost key.
+
+Response (by wallet):
+```json
+{ "api_key": "sk-x402-...", "balance": "$0.094500", "used": "$0.005500", "payer": "0x..." }
+```
+
+Response (by API key):
 ```json
 { "balance": "$0.094500", "used": "$0.005500", "payer": "0x..." }
 ```
@@ -168,6 +175,7 @@ Response:
 Present:
 
 > Your WeClaude balance:
+> - **API Key**: `sk-x402-...` *(only if recovered via wallet lookup)*
 > - **Remaining**: $X.XXXXXX
 > - **Used**: $X.XXXXXX
 > - **Wallet**: 0x...

@@ -35,21 +35,26 @@ For x402 payment header assembly, see [references/x402-payment-flow.md](referenc
 
 **Trigger**: user wants a Claude API key, buy credits, top up, or onboard.
 
-1. Send `POST /v1/buyer/topup[/<amount>]` — get 402 challenge
-2. Decode `PAYMENT-REQUIRED` header, extract payment params
-3. Detect payer address via `onchainos wallet status`
+**Quick flow:**
+1. `POST /v1/buyer/topup[/<amount>]` → server returns **402** with payment details **in the JSON body**
+2. Read the 402 body: `amount`, `network`, `asset`, `payTo`, `maxTimeoutSeconds`, `payment_header_name`, and `instructions`
+3. Detect payer address: `onchainos wallet status`
 4. **Confirm** amount + addresses with user — **STOP until confirmed**
-5. Sign with `onchainos payment x402-pay`, build header, replay request
-6. Present API key + configure Claude Code (`ANTHROPIC_BASE_URL` + `ANTHROPIC_API_KEY`)
+5. Sign: `onchainos payment x402-pay --network <network> --amount <amount> --pay-to <payTo> --asset <asset> --max-timeout-seconds <maxTimeoutSeconds> --from <PAYER_ADDRESS>`
+6. Extract `signature` and `authorization` from sign response (check both `data.*` and top-level)
+7. Build payload, base64-encode, replay with header — **follow the `instructions` array from the 402 body**
+8. Present API key + configure Claude Code (`ANTHROPIC_BASE_URL=https://api.weclaude.cc` + `ANTHROPIC_API_KEY`)
 
 Tiers: `$0.10` (default), `$0.50`, `$1.00`, `$5.00`. Same wallet tops up existing balance, returns same key.
+
+For full payload assembly details, see [references/x402-payment-flow.md](references/x402-payment-flow.md).
 
 ### Balance — Check Remaining Credits
 
 **Trigger**: user wants to check balance or usage.
 
 - By API key: `curl -s "https://api.weclaude.cc/v1/buyer/balance" -H "Authorization: Bearer <KEY>"`
-- By wallet: `curl -s "https://api.weclaude.cc/v1/buyer/balance?payer=<ADDRESS>"`
+- By wallet: `curl -s "https://api.weclaude.cc/v1/buyer/balance?payer=<ADDRESS>"` — also returns the `api_key` (use this to recover a lost key)
 
 ### Withdraw — Refund Unused Balance
 
@@ -110,8 +115,10 @@ Point any SDK at `https://api.weclaude.cc` as the base URL. List models: `GET /v
 | Signing fails | Report error, offer retry or cancel. |
 | Zero balance on withdraw | Nothing to withdraw — inform user. |
 | Same wallet topups again | Server tops up existing balance, returns same API key. |
-| Invalid API key | For balance, try `?payer=0x...` instead. For withdraw, topup first. |
-| Balance $0.000000 after usage | Large response consumed all balance (clamped at zero). Top up again. |
+| Invalid or lost API key | Look up by wallet: `GET /v1/buyer/balance?payer=0x...` — returns `api_key`. For withdraw, topup first. |
+| `_weclaude.warning: "low_balance"` in response | Balance below $1. Proactively top up before next call fails. Follow `topup_tiers` URLs in the warning. |
+| Balance $0.000000 after usage | Balance depleted. The 402 response includes `topup_tiers` and `instructions` — follow them to top up. Same wallet, same API key. |
+| Insufficient balance 402 on API call | Read the 402 body — it includes `topup_tiers` and `instructions` for the x402 payment flow. No need to reconfigure after topup. |
 | Larger topup | Tiers: `/v1/buyer/topup/0.5`, `/v1/buyer/topup/1.0`, `/v1/buyer/topup/5.0`. |
 | Seller auth 409 | Address already has an active account — show `account_id`. |
 | Seller auth expired | 5-minute window passed. Start new flow. |
