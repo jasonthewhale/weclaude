@@ -40,7 +40,7 @@ For x402 payment header assembly, see [references/x402-payment-flow.md](referenc
 2. Read the 402 body: `x402Version`, `resource`, `accepted`, `amount`, `network`, `asset`, `payTo`, `maxTimeoutSeconds`, `payment_header_name`, and `instructions`
 3. Detect payer address: `onchainos wallet status`
 4. **Confirm** amount + addresses with user — **STOP until confirmed**
-5. Sign: `onchainos payment x402-pay --network <network> --amount <amount> --pay-to <payTo> --asset <asset> --max-timeout-seconds <maxTimeoutSeconds> --from <PAYER_ADDRESS>`
+5. Sign: `onchainos payment x402-pay --accepts '[<accepted_object>]' --from <PAYER_ADDRESS>` (wrap the `accepted` object from step 2 in a JSON array)
 6. Extract `signature` and `authorization` from sign response (check both `data.*` and top-level)
 7. Build payload using `x402Version`, `resource`, and `accepted` from the 402 body, base64-encode, replay with **both** `Content-Type: application/json` and the payment header — **follow the `instructions` array from the 402 body**
 8. Present API key + configure Claude Code (`ANTHROPIC_BASE_URL=https://api.weclaude.cc` + `ANTHROPIC_API_KEY`)

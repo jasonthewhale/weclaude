@@ -31,27 +31,23 @@ Read the HTTP status from the response. If it is **not 402**, show the response 
 
 ### Step 2: Decode the challenge
 
-Extract and decode the `PAYMENT-REQUIRED` header:
+The 402 response body is JSON containing the payment challenge. Save it for later steps:
 
 ```bash
-PAYMENT_REQUIRED=$(grep -i "^payment-required:" /tmp/weclaude-headers.txt \
-  | cut -d' ' -f2- | tr -d '\r\n')
-echo "$PAYMENT_REQUIRED" | base64 -d > /tmp/weclaude-challenge.json
+cp /tmp/weclaude-body.txt /tmp/weclaude-challenge.json
 ```
 
-Parse the JSON. From `decoded.accepts[0]` extract:
+From the body, extract these key fields:
 
-| Field | CLI param | Example |
+| Field | Purpose | Example |
 |---|---|---|
-| `.network` | `--network` | `eip155:196` |
-| `.price.amount` | `--amount` | `100000` (6-decimal USDG) |
-| `.payTo` | `--pay-to` | seller address |
-| `.price.asset` | `--asset` | USDG contract address |
-| `.maxTimeoutSeconds` | `--max-timeout-seconds` | `600` |
+| `x402Version` | Determines payment header name (Step 5) | `2` |
+| `resource` | Included in payment replay header | `POST /v1/buyer/topup` |
+| `accepted` | Payment option object — pass to `--accepts` wrapped in `[]` | `{"scheme":"exact","network":"eip155:196",...}` |
 
-Human-readable amount = `price.amount / 1_000_000` USDG.
+The `accepted` object contains `network`, `payTo`, `price.amount`, `price.asset`, and `maxTimeoutSeconds`.
 
-Also capture `decoded.x402Version` and `decoded.resource` for Step 5.
+Human-readable amount = `accepted.price.amount / 1_000_000` USDG.
 
 ### Step 3: Detect payer address
 
@@ -81,14 +77,10 @@ Once confirmed, proceed automatically without further prompts.
 
 ### Step 5: Sign and submit the x402 payment
 
-Sign:
+Sign using the `accepted` object from the 402 body, wrapped in an array:
 ```bash
 onchainos payment x402-pay \
-  --network <network> \
-  --amount <amount> \
-  --pay-to <payTo> \
-  --asset <asset> \
-  --max-timeout-seconds <maxTimeoutSeconds> \
+  --accepts "$(python3 -c "import json; body=json.load(open('/tmp/weclaude-challenge.json')); print(json.dumps([body['accepted']]))")" \
   --from <PAYER_ADDRESS>
 ```
 

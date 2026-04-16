@@ -16,8 +16,8 @@ Determine from `decoded.x402Version` (read from the 402 challenge JSON):
 After signing with `onchainos payment x402-pay`, you have:
 - `SIGNATURE` — the hex signature string (from `data.signature` or top-level `signature`)
 - `AUTHORIZATION` — the authorization object (from `data.authorization` or top-level `authorization`)
-- `DECODED` — the full 402 challenge JSON (parsed from the `PAYMENT-REQUIRED` header)
-- `OPTION` — `DECODED.accepts[0]`
+- `DECODED` — the full 402 challenge JSON (the 402 response body, saved to `/tmp/weclaude-challenge.json`)
+- `OPTION` — `DECODED.accepted` (the payment option object from the body)
 
 Construct the payload:
 
@@ -42,7 +42,7 @@ import json, base64, sys
 with open('/tmp/weclaude-challenge.json') as f:
     decoded = json.load(f)
 
-option = decoded['accepts'][0]
+option = decoded['accepted']
 signature = sys.argv[1]
 authorization = json.loads(sys.argv[2])
 
