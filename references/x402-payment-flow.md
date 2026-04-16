@@ -1,6 +1,6 @@
 # x402 Payment Flow — Header Assembly & Replay
 
-This reference covers the technical detail for building the `PAYMENT-SIGNATURE` / `X-PAYMENT` header and replaying the request to `/v1/topup` after signing.
+This reference covers the technical detail for building the `PAYMENT-SIGNATURE` / `X-PAYMENT` header and replaying the request to `/v1/buyer/topup` after signing.
 
 ## Header Name
 
@@ -61,7 +61,7 @@ HEADER_VALUE=$(cat /tmp/weclaude-payment-header.txt)
 ## Replaying the Request
 
 ```bash
-curl -s -X POST "<SERVER_URL>/v1/topup" \
+curl -s -X POST "https://api.weclaude.cc/v1/buyer/topup" \
   -H "Content-Type: application/json" \
   -H "<HEADER_NAME>: $HEADER_VALUE"
 ```
@@ -73,7 +73,7 @@ curl -s -X POST "<SERVER_URL>/v1/topup" \
   "api_key": "sk-x402-...",
   "balance": "$0.10",
   "pricing": "real token usage — varies by model",
-  "close_url": "/v1/close",
+  "withdraw_url": "/v1/buyer/withdraw",
   "usage": "Authorization: Bearer sk-x402-..."
 }
 ```
