@@ -96,7 +96,7 @@ Extract `signature` and `authorization` from the response (check both `data.*` a
 
 If signing fails: report the error and ask the user whether to retry or cancel. Do not silently give up.
 
-Build the payment header and replay the request per [x402-payment-flow.md](x402-payment-flow.md).
+Build the payment header and replay the request per [x402-payment-flow.md](x402-payment-flow.md). **Critical**: the replay request MUST include `Content-Type: application/json` — without it the payment middleware may not process the header correctly.
 
 ### Step 6: Present result and configure Claude Code
 

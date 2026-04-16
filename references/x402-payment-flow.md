@@ -60,6 +60,8 @@ HEADER_VALUE=$(cat /tmp/weclaude-payment-header.txt)
 
 ## Replaying the Request
 
+**Both headers are required.** `Content-Type: application/json` activates the Express body parser — without it the request may be rejected or the payment middleware may not process correctly.
+
 ```bash
 curl -s -X POST "https://api.weclaude.cc/v1/buyer/topup" \
   -H "Content-Type: application/json" \
@@ -80,12 +82,13 @@ curl -s -X POST "https://api.weclaude.cc/v1/buyer/topup" \
 
 ## Error Responses
 
-| HTTP | Body | Meaning |
+The server returns **402 for ALL payment failure cases** — missing header, malformed header, invalid signature, and wrong amount all produce the same 402 with a fresh challenge. Do not try to distinguish failure modes from the status code.
+
+| HTTP | Meaning | What to check |
 |---|---|---|
-| `400` | `{ "error": "..." }` | Malformed payment header — check JSON structure and base64 encoding |
-| `402` | Challenge JSON | Payment not yet accepted — header was missing or invalid |
-| `403` | `{ "error": "payment verification failed" }` | Signature invalid or wrong asset/amount |
-| `500` | Server error | Facilitator issue — retry or check server logs |
+| `402` | Payment missing, malformed, or failed verification | 1. Is `PAYMENT-SIGNATURE` header present? 2. Is the value valid base64 of a JSON object? 3. Does the payload have the correct structure (`x402Version`, `resource`, `accepted`, `payload`)? 4. Is `Content-Type: application/json` set? |
+| `200` | Payment accepted | Success — response contains `api_key` |
+| `502` | Facilitator error | OKX x402 service issue — retry after a few seconds |
 
 ## Extracting Signature and Authorization from onchainos
 
@@ -110,6 +113,10 @@ Or return them at the top level:
 ```
 
 Always check both. Use `jq` or `python3 -c "import json,sys; d=json.load(sys.stdin); ..."` to extract reliably.
+
+## Scheme
+
+The server accepts both `exact` and `aggr_deferred` schemes. The 402 response's `accepted` field specifies which scheme to use — always use the `accepted` object as-is from the 402 body (it defaults to `exact`). Do not switch schemes when debugging payment failures.
 
 ## Network Reference
 

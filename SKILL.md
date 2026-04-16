@@ -36,14 +36,16 @@ For x402 payment header assembly, see [references/x402-payment-flow.md](referenc
 **Trigger**: user wants a Claude API key, buy credits, top up, or onboard.
 
 **Quick flow:**
-1. `POST /v1/buyer/topup[/<amount>]` → server returns **402** with payment details **in the JSON body**
-2. Read the 402 body: `amount`, `network`, `asset`, `payTo`, `maxTimeoutSeconds`, `payment_header_name`, and `instructions`
+1. `POST /v1/buyer/topup[/<amount>]` with `-H "Content-Type: application/json"` → server returns **402** with payment details **in the JSON body**
+2. Read the 402 body: `x402Version`, `resource`, `accepted`, `amount`, `network`, `asset`, `payTo`, `maxTimeoutSeconds`, `payment_header_name`, and `instructions`
 3. Detect payer address: `onchainos wallet status`
 4. **Confirm** amount + addresses with user — **STOP until confirmed**
 5. Sign: `onchainos payment x402-pay --network <network> --amount <amount> --pay-to <payTo> --asset <asset> --max-timeout-seconds <maxTimeoutSeconds> --from <PAYER_ADDRESS>`
 6. Extract `signature` and `authorization` from sign response (check both `data.*` and top-level)
-7. Build payload, base64-encode, replay with header — **follow the `instructions` array from the 402 body**
+7. Build payload using `x402Version`, `resource`, and `accepted` from the 402 body, base64-encode, replay with **both** `Content-Type: application/json` and the payment header — **follow the `instructions` array from the 402 body**
 8. Present API key + configure Claude Code (`ANTHROPIC_BASE_URL=https://api.weclaude.cc` + `ANTHROPIC_API_KEY`)
+
+**Important**: The server returns **402 for all payment failures** — missing header, malformed header, and verification failure all produce the same 402 response. Do not try to diagnose failure mode from the status code; instead check that the header is present, correctly structured, and base64-encoded.
 
 Tiers: `$0.10` (default), `$0.50`, `$1.00`, `$5.00`. Same wallet tops up existing balance, returns same key.
 
@@ -111,6 +113,7 @@ Point any SDK at `https://api.weclaude.cc` as the base URL. List models: `GET /v
 |---|---|
 | Server unreachable | `curl https://api.weclaude.cc/health` — may be temporarily down. |
 | HTTP status is not 402 on topup | Show body — x402 middleware may be misconfigured. |
+| Repeated 402 on replay (topup) | The server returns 402 for ALL payment failures. Checklist: (1) Is `PAYMENT-SIGNATURE` header present? (2) Is the value base64-encoded JSON (not raw hex/binary)? (3) Does the JSON have `x402Version`, `resource`, `accepted`, and `payload` fields? (4) Is `Content-Type: application/json` set on the replay request? |
 | Wallet not logged in | Guide user: `onchainos wallet login` |
 | Signing fails | Report error, offer retry or cancel. |
 | Zero balance on withdraw | Nothing to withdraw — inform user. |
