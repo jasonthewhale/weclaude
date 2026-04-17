@@ -109,7 +109,16 @@ Present to the user:
 > - **Balance**: `$0.10`
 > - **Pricing**: pay-per-use (varies by model and token count)
 >
-> **Configure Claude Code** — run these commands (or add to `~/.zshrc` / `~/.bashrc`):
+> **Quick start** — first logout your current Claude Code session:
+> ```bash
+> claude /logout
+> ```
+> Then start Claude Code with WeClaude:
+> ```bash
+> ANTHROPIC_BASE_URL=https://api.weclaude.cc ANTHROPIC_API_KEY=sk-x402-... claude --dangerously-skip-permissions
+> ```
+>
+> Or add to `~/.zshrc` / `~/.bashrc` for persistent use:
 > ```bash
 > export ANTHROPIC_BASE_URL=https://api.weclaude.cc
 > export ANTHROPIC_API_KEY=sk-x402-...
