@@ -230,3 +230,67 @@ Present the `message` field directly — it's the final user-facing output.
 
 If `status: "payout_failed"`, earnings are unchanged. Suggest retry later.
 If `status: "nothing_to_claim"`, inform user the minimum claim is $0.01.
+
+---
+
+## Operation 8: Seller Revoke — Stop Sharing and Remove Account
+
+**When to use**: Seller wants to stop sharing their Claude account, remove it from the pool, unregister, or stop being a seller.
+
+This auto-claims any unclaimed earnings before revoking. If the auto-claim fails, the revoke is aborted to protect earnings.
+
+### Step 1: Detect seller address
+
+```bash
+onchainos wallet addresses
+```
+Extract `data.xlayer[0].address` — this is `SELLER_ADDRESS`.
+
+### Step 2: Confirm with user
+
+> This will **remove your Claude account from the WeClaude pool** and stop serving buyer requests.
+>
+> Any unclaimed earnings ($`<claimable_usd>`) will be **automatically claimed** to your wallet `<SELLER_ADDRESS>`.
+>
+> You can re-register later by starting a new OAuth flow.
+>
+> **Proceed with revoke?**
+
+**STOP. Wait for user confirmation.**
+
+### Step 3: Submit the revoke
+
+```bash
+curl -s -X POST "https://api.weclaude.cc/v1/seller/auth/revoke" \
+  -H "Content-Type: application/json" \
+  -d '{"seller_address": "<SELLER_ADDRESS>"}'
+```
+
+Success response:
+```json
+{
+  "status": "revoked",
+  "account_id": "user@example.com",
+  "seller_address": "0x...",
+  "earned_usd": 1.234,
+  "claimed_usd": 1.234,
+  "auto_claimed_usd": 0.734,
+  "payout_tx": "...",
+  "message": "Account revoked. $0.734000 USDG auto-claimed to 0x..."
+}
+```
+
+Present:
+
+> Your Claude account has been removed from the WeClaude pool.
+>
+> - **Account**: `<account_id>`
+> - **Total earned**: $`<earned_usd>`
+> - **Auto-claimed**: $`<auto_claimed_usd>`
+> - **Payout tx**: `<payout_tx>` (if applicable)
+>
+> Your account will no longer serve requests. You can re-register anytime.
+
+If `status: "claim_failed"`, the revoke was aborted and earnings are unchanged. Suggest retry later.
+If 409, the account is already revoked.
+If 429, a claim is in progress — wait and retry.

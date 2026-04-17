@@ -20,7 +20,7 @@ If the user specifies an amount (e.g. "top up $1"), use the matching endpoint. O
 ### Step 1: Get the 402 payment challenge
 
 ```bash
-curl -s -D /tmp/weclaude-headers.txt -o /tmp/weclaude-body.txt \
+curl -s -o /tmp/weclaude-challenge.json -w "%{http_code}" \
   -X POST "https://api.weclaude.cc/v1/buyer/topup[/<amount>]" \
   -H "Content-Type: application/json"
 ```
@@ -29,77 +29,65 @@ Replace `[/<amount>]` with the chosen tier suffix (e.g. `/0.5`) or omit for the 
 
 Read the HTTP status from the response. If it is **not 402**, show the response body and stop.
 
-### Step 2: Decode the challenge
+The 402 body contains the payment details and the exact `onchainos` command to run. Key fields:
 
-The 402 response body is JSON containing the payment challenge. Save it for later steps:
+| Field | Purpose |
+|---|---|
+| `accepted.network` | CAIP-2 network (e.g. `eip155:196`) |
+| `accepted.amount` | Atomic USDG amount (e.g. `100000` = $0.10) |
+| `accepted.payTo` | Recipient address |
+| `accepted.asset` | Token contract |
+| `accepted.maxTimeoutSeconds` | Signature timeout |
+| `instructions` | Step-by-step guide (follow these) |
 
-```bash
-cp /tmp/weclaude-body.txt /tmp/weclaude-challenge.json
-```
+### Step 2: Detect payer address and confirm
 
-From the body, extract these key fields:
-
-| Field | Purpose | Example |
-|---|---|---|
-| `x402Version` | Determines payment header name (Step 5) | `2` |
-| `resource` | Included in payment replay header | `POST /v1/buyer/topup` |
-| `accepted` | Payment option object — pass to `--accepts` wrapped in `[]` | `{"scheme":"exact","network":"eip155:196",...}` |
-
-The `accepted` object contains `network`, `payTo`, `price.amount`, `price.asset`, and `maxTimeoutSeconds`.
-
-Human-readable amount = `accepted.price.amount / 1_000_000` USDG.
-
-### Step 3: Detect payer address
-
-First, check login status:
-```bash
-onchainos wallet status
-```
-If `data.loggedIn` is `false`, ask the user to log in (`onchainos wallet login`), then re-check.
-
-Then get the X Layer address:
+Get the X Layer address:
 ```bash
 onchainos wallet addresses
 ```
 Parse the JSON response and extract `data.xlayer[0].address` — this is `PAYER_ADDRESS`.
-
-> **Important**: `onchainos wallet status` returns login info only — it does NOT contain any address. Always use `onchainos wallet addresses` for the address.
-> **Do NOT** pass `--chain` to filter — it is not supported and will error. Parse the full JSON output instead.
-
-If the user explicitly provided a different address, use that instead.
-
-### Step 4: Confirm payment (one-time gate)
 
 Present a brief summary and wait for the user:
 
 > Ready to top up your WeClaude account:
 > - **Amount**: `<human-readable>` USDG (e.g. $0.10, $0.50, $1.00, or $5.00)
 > - **Network**: X Layer (`eip155:196`)
-> - **Pay to**: `<payTo>`
 > - **Pay from**: `<PAYER_ADDRESS>` (your default wallet)
 >
 > Proceed? (yes / no)
 
 **STOP. Do not continue without explicit user confirmation.**
 
-Once confirmed, proceed automatically without further prompts.
+### Step 3: Sign the payment
 
-### Step 5: Sign and submit the x402 payment
+Use the values from the 402 challenge body:
 
-Sign using the `accepted` object from the 402 body, wrapped in an array:
 ```bash
 onchainos payment x402-pay \
-  --accepts "$(python3 -c "import json; body=json.load(open('/tmp/weclaude-challenge.json')); print(json.dumps([body['accepted']]))")" \
+  --network <accepted.network> \
+  --amount <accepted.amount> \
+  --pay-to <accepted.payTo> \
+  --asset <accepted.asset> \
+  --max-timeout-seconds <accepted.maxTimeoutSeconds> \
   --from <PAYER_ADDRESS>
 ```
 
 Extract `signature` and `authorization` from the response (check both `data.*` and top-level keys).
 
-If signing fails: report the error and ask the user whether to retry or cancel. Do not silently give up.
+If signing fails: report the error and ask the user whether to retry or cancel.
 
-Build the payment header and replay the request per [x402-payment-flow.md](x402-payment-flow.md). **Critical**: the replay request MUST include `Content-Type: application/json` — without it the payment middleware may not process the header correctly.
+### Step 4: Submit the payment
 
-### Step 6: Present result and configure Claude Code
+POST the raw sign result back to the same endpoint:
+
+```bash
+curl -s -X POST "https://api.weclaude.cc/v1/buyer/topup[/<amount>]" \
+  -H "Content-Type: application/json" \
+  -d '{"signature":"<SIGNATURE>","authorization":<AUTHORIZATION_OBJECT>}'
+```
+
+The server assembles the x402 payment header internally — no base64 encoding or header construction needed.
 
 On success the server returns:
 ```json
@@ -125,14 +113,6 @@ Present to the user:
 > ```bash
 > export ANTHROPIC_BASE_URL=https://api.weclaude.cc
 > export ANTHROPIC_API_KEY=sk-x402-...
-> ```
->
-> **Test it:**
-> ```bash
-> curl https://api.weclaude.cc/v1/messages \
->   -H "Authorization: Bearer sk-x402-..." \
->   -H "Content-Type: application/json" \
->   -d '{"model":"claude-sonnet-4-6","max_tokens":256,"messages":[{"role":"user","content":"Hello!"}]}'
 > ```
 >
 > To check balance: *"check my weclaude balance"*
