@@ -106,6 +106,8 @@ Response:
   "total_output_tokens": 187200,
   "total_cache_creation_tokens": 12000,
   "total_cache_read_tokens": 45000,
+  "earned_usd": 0.0385,
+  "claimed_usd": 0,
   "created_at": "2026-04-16 02:37:58"
 }
 ```
@@ -115,6 +117,105 @@ Present:
 > Your WeClaude seller stats:
 > - **Account**: `<account_id>`
 > - **Status**: `<status>`
+> - **Earned**: $`<earned_usd>` (claimed: $`<claimed_usd>`)
 > - **Total requests served**: `<total_requests>`
 > - **Total tokens**: `<total_input_tokens + total_output_tokens>` (in: `<total_input_tokens>`, out: `<total_output_tokens>`)
 > - **Member since**: `<created_at>`
+
+---
+
+## Operation 6: Seller Earnings — Check Earnings Breakdown
+
+**When to use**: Seller wants to check how much they've earned, what's been claimed, and what's claimable.
+
+### Step 1: Detect seller address
+
+```bash
+onchainos wallet status
+```
+
+### Step 2: Query seller earnings
+
+```bash
+curl -s "https://api.weclaude.cc/v1/seller/earn?address=<SELLER_ADDRESS>"
+```
+
+Response:
+```json
+{
+  "account_id": "user@example.com",
+  "seller_address": "0x...",
+  "source": "seller",
+  "status": "active",
+  "earned_usd": 1.234,
+  "claimed_usd": 0.5,
+  "claimable_usd": 0.734,
+  "total_requests": 542,
+  "created_at": "2026-04-16 02:37:58"
+}
+```
+
+Present:
+
+> Your WeClaude earnings:
+> - **Account**: `<account_id>`
+> - **Total earned**: $`<earned_usd>`
+> - **Already claimed**: $`<claimed_usd>`
+> - **Claimable now**: $`<claimable_usd>`
+> - **Total requests served**: `<total_requests>`
+>
+> To withdraw your earnings as USDG, say *"claim my seller earnings"*.
+
+---
+
+## Operation 7: Seller Claim — Withdraw Earnings as USDG
+
+**When to use**: Seller wants to claim accumulated earnings, withdraw seller earnings, get paid out.
+
+### Step 1: Detect seller address
+
+```bash
+onchainos wallet status
+```
+
+### Step 2: Check claimable amount
+
+```bash
+curl -s "https://api.weclaude.cc/v1/seller/earn?address=<SELLER_ADDRESS>"
+```
+
+If `claimable_usd` is 0 or below $0.01, inform the user there's nothing to claim yet.
+
+### Step 3: Confirm with user
+
+> You have **$`<claimable_usd>`** in claimable earnings. This will send USDG to your wallet `<SELLER_ADDRESS>`.
+>
+> **Proceed with claim?**
+
+**STOP. Wait for user confirmation.**
+
+### Step 4: Submit the claim
+
+```bash
+curl -s -X POST "https://api.weclaude.cc/v1/seller/claim" \
+  -H "Content-Type: application/json" \
+  -d '{"seller_address": "<SELLER_ADDRESS>"}'
+```
+
+Success response:
+```json
+{
+  "status": "claimed",
+  "account_id": "user@example.com",
+  "claimed_amount": "$0.734000",
+  "total_earned": "$1.234000",
+  "total_claimed": "$1.234000",
+  "payout_tx": "...",
+  "message": "$0.734000 USDG sent to 0x..."
+}
+```
+
+Present the `message` field directly — it's the final user-facing output.
+
+If `status: "payout_failed"`, earnings are unchanged. Suggest retry later.
+If `status: "nothing_to_claim"`, inform user the minimum claim is $0.01.

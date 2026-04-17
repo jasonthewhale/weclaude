@@ -1,6 +1,6 @@
 ---
 name: weclaude
-description: "Use this skill when the user wants to get a Claude API key via WeClaude, onboard to WeClaude, top up Claude API credits, check balance, withdraw unused balance, OR contribute their Claude OAuth token as a seller. Trigger on: 'use weclaude skill', 'get a Claude API key', 'get an api key for claude code', 'set up weclaude', 'onboard to weclaude', 'buy Claude credits', 'top up Claude', 'weclaude topup', 'check weclaude balance', 'withdraw weclaude balance', 'claude api with crypto', 'pay for claude api', 'contribute my Claude account', 'become a weclaude seller', 'share my Claude token', 'seller status', 'check seller stats'. Chinese: 获取Claude API密钥, 充值Claude, Claude API密钥, Claude余额, Claude提现, 购买Claude额度, 成为卖家, 贡献Claude账号. Do NOT use for general Claude questions or prompt engineering. Do NOT use for wallet setup — use okx-agentic-wallet. Do NOT use for token swaps — use okx-dex-swap."
+description: "Use this skill when the user wants to get a Claude API key via WeClaude, onboard to WeClaude, top up Claude API credits, check balance, withdraw unused balance, OR contribute their Claude OAuth token as a seller, check seller earnings, or claim seller earnings. Trigger on: 'use weclaude skill', 'get a Claude API key', 'get an api key for claude code', 'set up weclaude', 'onboard to weclaude', 'buy Claude credits', 'top up Claude', 'weclaude topup', 'check weclaude balance', 'withdraw weclaude balance', 'claude api with crypto', 'pay for claude api', 'contribute my Claude account', 'become a weclaude seller', 'share my Claude token', 'seller status', 'check seller stats', 'check seller earnings', 'seller earn', 'claim seller earnings', 'seller claim', 'withdraw seller earnings'. Chinese: 获取Claude API密钥, 充值Claude, Claude API密钥, Claude余额, Claude提现, 购买Claude额度, 成为卖家, 贡献Claude账号, 查看卖家收益, 提取卖家收益. Do NOT use for general Claude questions or prompt engineering. Do NOT use for wallet setup — use okx-agentic-wallet. Do NOT use for token swaps — use okx-dex-swap."
 metadata:
   author: weclaude
   version: "2.0.0"
@@ -93,7 +93,27 @@ Each seller wallet maps to exactly one OAuth account (1:1, like buyer wallet →
 
 **Trigger**: seller wants to check usage stats, request count, tokens served.
 
-`GET /v1/seller/status?address=<SELLER_ADDRESS>` — returns total_requests, total tokens, status.
+`GET /v1/seller/status?address=<SELLER_ADDRESS>` — returns total_requests, total tokens, earned_usd, status.
+
+### Seller Earnings — Check Earnings Breakdown
+
+**Trigger**: seller wants to check earnings, how much they've earned, claimable balance.
+
+1. Detect wallet via `onchainos wallet status`
+2. `GET /v1/seller/earn?address=<SELLER_ADDRESS>` — returns earned, claimed, claimable amounts
+3. Present the earnings breakdown to user
+
+### Seller Claim — Withdraw Earnings as USDG
+
+**Trigger**: seller wants to claim earnings, withdraw seller earnings, get paid.
+
+1. Detect wallet via `onchainos wallet status`
+2. Check earnings first: `GET /v1/seller/earn?address=<SELLER_ADDRESS>`
+3. If `claimable_usd` > 0, **confirm** with user — this sends funds on-chain. **STOP until confirmed.**
+4. `POST /v1/seller/claim {"seller_address": "<ADDRESS>"}` — sends USDG to seller wallet
+5. Present the `message` field — it's the final user-facing output
+
+Minimum claim: $0.01. If claim fails (`status: "payout_failed"`), earnings stay intact. Suggest retry later.
 
 ---
 
@@ -127,3 +147,6 @@ Point any SDK at `https://api.weclaude.cc` as the base URL. List models: `GET /v
 | Seller auth expired | 5-minute window passed. Start new flow. |
 | Token exchange fails | Claude OAuth issue — retry. Browser session may have expired. |
 | Seller status 404 | Not registered yet — guide through seller registration. |
+| Seller claim below minimum | Less than $0.01 claimable — inform user and show current earnings. |
+| Seller claim payout fails | Earnings unchanged. Suggest retry later. |
+| Seller earn 404 | Not registered — guide through seller registration. |
