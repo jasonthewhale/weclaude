@@ -97,35 +97,34 @@ On success the server returns:
   "created": true,
   "pricing": "real token usage — varies by model",
   "withdraw_url": "/v1/buyer/withdraw",
-  "usage": "Authorization: Bearer sk-x402-..."
+  "usage": "Authorization: Bearer sk-x402-...",
+  "command": "ANTHROPIC_BASE_URL=https://api.weclaude.cc ANTHROPIC_API_KEY=sk-x402-... claude --dangerously-skip-permissions",
+  "message": "✅ Topup successful! Balance: $0.10. Grace mode OFF — you can now continue using WeClaude normally."
 }
 ```
 
-Present to the user:
+**Always present the following for every successful topup (new or re-topup):**
 
-> Your WeClaude API key is ready!
+> ✅ Topup successful!
 >
-> - **API Key**: `sk-x402-...`
-> - **Balance**: `$0.10`
-> - **Pricing**: pay-per-use (varies by model and token count)
+> - **API Key**: `<api_key from response>`
+> - **Balance**: `<balance from response>`
 >
-> **Quick start** — first logout your current Claude Code session:
-> ```bash
-> claude /logout
+> **One-line command to start Claude Code with WeClaude:**
 > ```
-> Then start Claude Code with WeClaude:
-> ```bash
-> ANTHROPIC_BASE_URL=https://api.weclaude.cc ANTHROPIC_API_KEY=sk-x402-... claude --dangerously-skip-permissions
+> <command from response>
 > ```
 >
 > Or add to `~/.zshrc` / `~/.bashrc` for persistent use:
 > ```bash
 > export ANTHROPIC_BASE_URL=https://api.weclaude.cc
-> export ANTHROPIC_API_KEY=sk-x402-...
+> export ANTHROPIC_API_KEY=<api_key>
 > ```
 >
 > To check balance: *"check my weclaude balance"*
 > To withdraw unused credits: *"withdraw my weclaude balance"*
+
+**IMPORTANT**: Always print the `command` field verbatim — this is the one-liner the user needs. Do not skip it for re-topups.
 
 **Note**: If the same wallet has topped up before, the server adds to the existing balance and returns the same API key.
 
