@@ -133,6 +133,26 @@ Present to the user:
 
 ---
 
+## Low-Balance Warning Headers
+
+Every gated API response (`/v1/messages`, `/v1/chat/completions`, `/v1/responses`) includes balance headers — these work for both streaming and non-streaming:
+
+| Header | When | Example |
+|---|---|---|
+| `X-WeClaude-Balance` | Always | `0.043210` |
+| `X-WeClaude-Warning` | Balance < $1.00 | `low_balance` |
+| `X-WeClaude-Message` | Balance < $1.00 | `Balance is low ($0.04). Top up to avoid interruption.` |
+
+If you detect `X-WeClaude-Warning: low_balance` in a response, proactively inform the user:
+
+> Your WeClaude balance is running low ($X.XX). Top up to avoid interruption:
+> - `$0.10`: `/v1/buyer/topup`
+> - `$0.50`: `/v1/buyer/topup/0.5`
+> - `$1.00`: `/v1/buyer/topup/1.0`
+> - `$5.00`: `/v1/buyer/topup/5.0`
+
+---
+
 ## Operation 2: Balance — Check Remaining Credits
 
 **When to use**: User wants to check their remaining balance or usage.

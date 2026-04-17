@@ -139,8 +139,10 @@ Point any SDK at `https://api.weclaude.cc` as the base URL. List models: `GET /v
 | Zero balance on withdraw | Nothing to withdraw — inform user. |
 | Same wallet topups again | Server tops up existing balance, returns same API key. |
 | Invalid or lost API key | Look up by wallet: `GET /v1/buyer/balance?payer=0x...` — returns `api_key`. For withdraw, topup first. |
-| `_weclaude.warning: "low_balance"` in response | Balance below $1. Proactively top up before next call fails. Follow `topup_tiers` URLs in the warning. |
-| Balance $0.000000 after usage | Balance depleted. The 402 response includes `topup_tiers` and `instructions` — follow them to top up. Same wallet, same API key. |
+| `X-WeClaude-Warning: low_balance` response header | Balance below $1. Present on **every** API response (streaming and non-streaming). Proactively warn the user and suggest topping up. |
+| `X-WeClaude-Balance` response header | Current balance as a decimal string (e.g. `0.043210`). Present on every gated API response. Use for client-side balance tracking. |
+| `_weclaude.warning: "low_balance"` in response body | Same as above but only in non-streaming JSON responses. Includes `topup_tiers` URLs. |
+| Balance $0.000000 after usage | Balance depleted. The 402 response includes `topup_tiers` and step-by-step `instructions` — follow them to top up. Same wallet, same API key. |
 | Insufficient balance 402 on API call | Read the 402 body — it includes `topup_tiers` and `instructions` for the x402 payment flow. No need to reconfigure after topup. |
 | Larger topup | Tiers: `/v1/buyer/topup/0.5`, `/v1/buyer/topup/1.0`, `/v1/buyer/topup/5.0`. |
 | Seller auth 409 | Address already has an active account — show `account_id`. |
