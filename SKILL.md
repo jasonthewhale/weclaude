@@ -26,6 +26,27 @@ WeClaude is a pay-per-use Claude API proxy. **Buyers** pay USDG on X Layer via x
 
 ---
 
+## Getting the Wallet Address
+
+WeClaude uses X Layer (chainIndex 196). To get the user's X Layer address:
+
+**Step 1 — Check login:**
+```bash
+onchainos wallet status
+```
+If `data.loggedIn` is `false`, ask the user to log in (`onchainos wallet login`), then re-check.
+
+**Step 2 — Get the X Layer address:**
+```bash
+onchainos wallet addresses
+```
+Parse the JSON output and extract `data.xlayer[0].address`. This is the payer/seller address for all WeClaude operations.
+
+> **Do NOT** use `onchainos wallet status` to get the address — it only returns login info, not addresses.
+> **Do NOT** pass `--chain` to `onchainos wallet addresses` — chain filtering is not supported and will error.
+
+---
+
 ## Buyer Operations
 
 For step-by-step details, see [references/buyer-operations.md](references/buyer-operations.md).
@@ -38,7 +59,7 @@ For x402 payment header assembly, see [references/x402-payment-flow.md](referenc
 **Quick flow:**
 1. `POST /v1/buyer/topup[/<amount>]` with `-H "Content-Type: application/json"` → server returns **402** with payment details **in the JSON body**
 2. Read the 402 body: `x402Version`, `resource`, `accepted`, `amount`, `network`, `asset`, `payTo`, `maxTimeoutSeconds`, `payment_header_name`, and `instructions`
-3. Detect payer address: `onchainos wallet status`
+3. Detect payer address — see "Getting the Wallet Address" below
 4. **Confirm** amount + addresses with user — **STOP until confirmed**
 5. Sign: `onchainos payment x402-pay --accepts '[<accepted_object>]' --from <PAYER_ADDRESS>` (wrap the `accepted` object from step 2 in a JSON array)
 6. Extract `signature` and `authorization` from sign response (check both `data.*` and top-level)
@@ -81,7 +102,7 @@ Each seller wallet maps to exactly one OAuth account (1:1, like buyer wallet →
 
 **Trigger**: user wants to contribute their Claude account, become a seller, share their token.
 
-1. Detect wallet via `onchainos wallet status`
+1. Get X Layer address via `onchainos wallet addresses` → `data.xlayer[0].address` (see "Getting the Wallet Address")
 2. `POST /v1/seller/auth/start {"seller_address": "0x..."}` — get `auth_url` + `state`
 3. Tell user to visit `auth_url`, log into Claude, approve, then **paste the callback URL** (localhost:54545 page won't load — expected)
 4. **STOP. Wait for user to paste URL.**
@@ -99,7 +120,7 @@ Each seller wallet maps to exactly one OAuth account (1:1, like buyer wallet →
 
 **Trigger**: seller wants to check earnings, how much they've earned, claimable balance.
 
-1. Detect wallet via `onchainos wallet status`
+1. Get X Layer address via `onchainos wallet addresses` → `data.xlayer[0].address`
 2. `GET /v1/seller/earn?address=<SELLER_ADDRESS>` — returns earned, claimed, claimable amounts
 3. Present the earnings breakdown to user
 
@@ -107,7 +128,7 @@ Each seller wallet maps to exactly one OAuth account (1:1, like buyer wallet →
 
 **Trigger**: seller wants to claim earnings, withdraw seller earnings, get paid.
 
-1. Detect wallet via `onchainos wallet status`
+1. Get X Layer address via `onchainos wallet addresses` → `data.xlayer[0].address`
 2. Check earnings first: `GET /v1/seller/earn?address=<SELLER_ADDRESS>`
 3. If `claimable_usd` > 0, **confirm** with user — this sends funds on-chain. **STOP until confirmed.**
 4. `POST /v1/seller/claim {"seller_address": "<ADDRESS>"}` — sends USDG to seller wallet

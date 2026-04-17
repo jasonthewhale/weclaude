@@ -51,13 +51,22 @@ Human-readable amount = `accepted.price.amount / 1_000_000` USDG.
 
 ### Step 3: Detect payer address
 
+First, check login status:
 ```bash
 onchainos wallet status
 ```
+If `data.loggedIn` is `false`, ask the user to log in (`onchainos wallet login`), then re-check.
 
-- **Logged in** -> extract the active account `address` field. This is `PAYER_ADDRESS`.
-- **Not logged in** -> ask the user to log in (`onchainos wallet login`), then re-run status.
-- If the user explicitly provided a different address, use that instead.
+Then get the X Layer address:
+```bash
+onchainos wallet addresses
+```
+Parse the JSON response and extract `data.xlayer[0].address` — this is `PAYER_ADDRESS`.
+
+> **Important**: `onchainos wallet status` returns login info only — it does NOT contain any address. Always use `onchainos wallet addresses` for the address.
+> **Do NOT** pass `--chain` to filter — it is not supported and will error. Parse the full JSON output instead.
+
+If the user explicitly provided a different address, use that instead.
 
 ### Step 4: Confirm payment (one-time gate)
 

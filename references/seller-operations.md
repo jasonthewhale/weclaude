@@ -10,11 +10,19 @@ This is a two-step flow: start the OAuth process, then complete it after the use
 
 ### Step 1: Detect seller address
 
+First, check login status:
 ```bash
 onchainos wallet status
 ```
+If `data.loggedIn` is `false`, ask the user to log in (`onchainos wallet login`), then re-check.
 
-Extract the active account `address` field. This is `SELLER_ADDRESS`.
+Then get the X Layer address:
+```bash
+onchainos wallet addresses
+```
+Parse the JSON response and extract `data.xlayer[0].address` — this is `SELLER_ADDRESS`.
+
+> **Important**: `onchainos wallet status` does NOT return addresses. Always use `onchainos wallet addresses`.
 
 ### Step 2: Start the OAuth flow
 
@@ -85,8 +93,9 @@ Present:
 ### Step 1: Detect seller address
 
 ```bash
-onchainos wallet status
+onchainos wallet addresses
 ```
+Extract `data.xlayer[0].address` — this is `SELLER_ADDRESS`.
 
 ### Step 2: Query seller status
 
@@ -131,8 +140,9 @@ Present:
 ### Step 1: Detect seller address
 
 ```bash
-onchainos wallet status
+onchainos wallet addresses
 ```
+Extract `data.xlayer[0].address` — this is `SELLER_ADDRESS`.
 
 ### Step 2: Query seller earnings
 
@@ -175,8 +185,9 @@ Present:
 ### Step 1: Detect seller address
 
 ```bash
-onchainos wallet status
+onchainos wallet addresses
 ```
+Extract `data.xlayer[0].address` — this is `SELLER_ADDRESS`.
 
 ### Step 2: Check claimable amount
 
